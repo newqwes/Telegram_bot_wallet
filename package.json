@@ -1,0 +1,25 @@
+{
+  "name": "telegram_bot_wallet",
+  "version": "1.0.0",
+  "description": "Regex input text to readable text",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newqwes/Telegram_bot_wallet.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/newqwes/Telegram_bot_wallet/issues"
+  },
+  "homepage": "https://github.com/newqwes/Telegram_bot_wallet#readme",
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "node-telegram-bot-api": "^0.53.0",
+    "nodemon": "^2.0.12"
+  }
+}
