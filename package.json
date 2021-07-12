@@ -2,7 +2,7 @@
   "name": "telegram_bot_wallet",
   "version": "1.0.0",
   "description": "Regex input text to readable text",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js"
@@ -19,7 +19,9 @@
   "homepage": "https://github.com/newqwes/Telegram_bot_wallet#readme",
   "dependencies": {
     "dotenv": "^10.0.0",
+    "lodash": "^4.17.21",
     "node-telegram-bot-api": "^0.53.0",
-    "nodemon": "^2.0.12"
+    "nodemon": "^2.0.12",
+    "request-promise": "^4.2.6"
   }
 }
