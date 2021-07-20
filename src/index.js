@@ -3,10 +3,18 @@ const TelegraAPI = require('node-telegram-bot-api');
 const rp = require('request-promise');
 const lodash = require('lodash');
 
+const { round, sum } = lodash;
 dotenv.config();
 
 const { BOT_TOKEN, AUTH_KEY } = process.env;
-const { round, sum } = lodash;
+
+const utils = require('./utils.js');
+
+const LIST_HEADER_REGEX = /Цена покупки/;
+
+const opts = {
+  parse_mode: 'markdown',
+};
 
 const requestOptions = {
   method: 'GET',
@@ -33,54 +41,85 @@ const getListCoin = async () => {
   }
 };
 
-const utils = require('./utils.js');
-
 const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 
-bot.on('message', async ({ text, chat: { id } }) => {
-  const result = utils.count(text);
+let walletList = {};
 
-  const opts = {
-    parse_mode: 'markdown',
-  };
+const start = async () => {
+  bot.setMyCommands([
+    { command: '/start', description: 'Welcome' },
+    { command: '/show', description: 'Показать ваши сохраненные данные кошелька.' },
+    { command: '/check', description: 'Посчитать всё в кошельке.' },
+  ]);
 
-  const listCoin = await getListCoin();
+  bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
+    bot.deleteMessage(id, message_id - 1);
+    bot.deleteMessage(id, message_id);
 
-  if (!result) return await bot.sendMessage(id, 'Неправильные данные!');
+    try {
+      if (text === '/start') {
+        return bot.sendMessage(id, `Добро пожаловать в телеграм бот подсчета крипто-кошелька!`);
+      }
 
-  let totalAll = 0;
-  let currentPriceAll = [];
+      if (text === '/show') {
+        return bot.sendMessage(id, `${walletList[username]}`, opts);
+      }
 
-  result.forEach(async ({ coinName, count, total, average }) => {
-    const currency = listCoin.data.find(({ symbol }) => symbol === coinName);
+      if (text === '/check') {
+        const result = utils.count(walletList[username]);
 
-    let currentPrice;
+        const listCoin = await getListCoin();
 
-    if (!currency) currentPrice = 'Не найдено!';
+        if (!result) return await bot.sendMessage(id, 'Неправильные данные!');
 
-    currentPrice = currency.quote.USD.price;
+        let totalAll = 0;
+        let currentPriceAll = [];
 
-    const status = round((currentPrice * 100) / average, 2);
+        const answerMessages = [];
 
-    average = round(average, 4);
-    currentPrice = round(currentPrice, 4);
-    total = round(total, 2);
+        result.forEach(async ({ coinName, count, total, average }) => {
+          const currency = listCoin.data.find(({ symbol }) => symbol === coinName);
 
-    totalAll += total;
-    currentPriceAll.push(currentPrice * count);
+          let currentPrice;
 
-    await bot.sendMessage(
-      id,
-      `В *${coinName}* ты всего вложил: *${total} $*;\nУ тебя: *${count} ${coinName}*;\nСр. покупки: *${average} $*;\nТекущая стоимость: *${currentPrice} $*;\nСтатус: *${status}%*;\n`,
-      opts,
-    );
+          if (!currency) currentPrice = 'Не найдено!';
+
+          currentPrice = currency.quote.USD.price;
+
+          const status = round((currentPrice * 100) / average, 2);
+
+          average = round(average, 4);
+          currentPrice = round(currentPrice, 4);
+          total = round(total, 2);
+
+          totalAll += total;
+          currentPriceAll.push(currentPrice * count);
+
+          answerMessages.push(
+            `В *${coinName}* ты всего вложил: *${total} $*;\nУ тебя: *${count} ${coinName}*;\nСр. покупки: *${average} $*;\nТекущая стоимость: *${currentPrice} $*;\nСтатус: *${status}%*;\n`,
+          );
+        });
+
+        const sumPriceCurrent = round(sum(currentPriceAll), 2);
+
+        answerMessages.push(
+          `Всего вложил: *${totalAll}* $;\nСостояние кошелька: ${sumPriceCurrent} $`,
+        );
+
+        return await bot.sendMessage(id, answerMessages.join('\n'), opts);
+      }
+
+      if (LIST_HEADER_REGEX.test(text)) {
+        walletList[username] = text;
+
+        return await bot.sendMessage(id, 'Данные обновлены', opts);
+      }
+
+      return bot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');
+    } catch (e) {
+      return bot.sendMessage(id, 'Произошла какая то ошибочка!)');
+    }
   });
+};
 
-  const sumPriceCurrent = round(sum(currentPriceAll), 2);
-
-  return await bot.sendMessage(
-    id,
-    `Всего вложил: *${totalAll}* $;\nСостояние кошелька: ${sumPriceCurrent} $`,
-    opts,
-  );
-});
+start();
