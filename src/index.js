@@ -2,8 +2,11 @@ const dotenv = require('dotenv');
 const TelegraAPI = require('node-telegram-bot-api');
 const rp = require('request-promise');
 const lodash = require('lodash');
+const lodashfp = require('lodash/fp');
 
 const { round, sum } = lodash;
+const { getOr } = lodashfp;
+
 dotenv.config();
 
 const { BOT_TOKEN, AUTH_KEY } = process.env;
@@ -43,7 +46,8 @@ const getListCoin = async () => {
 
 const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 
-let walletList = {};
+const walletList = {};
+const permandingValues = {};
 
 const start = async () => {
   bot.setMyCommands([
@@ -95,16 +99,61 @@ const start = async () => {
           totalAll += total;
           currentPriceAll.push(currentPrice * count);
 
-          answerMessages.push(
-            `В *${coinName}* ты всего вложил: *${total} $*;\nУ тебя: *${count} ${coinName}*;\nСр. покупки: *${average} $*;\nТекущая стоимость: *${currentPrice} $*;\nСтатус: *${status}%*;\n`,
+          const { prevTotal, prevCount, prevAverage, prevCurrentPrice, prevStatus } = getOr(
+            {
+              prevTotal: null,
+              prevCount: null,
+              prevAverage: null,
+              prevCurrentPrice: null,
+              prevStatus: null,
+            },
+            [username, coinName],
+            permandingValues,
           );
+
+          answerMessages.push(
+            `В *${coinName}* ты всего вложил: *${total} $${utils.getDiff(
+              total,
+              prevTotal,
+            )}*;\nУ тебя: *${count}${utils.getDiff(
+              count,
+              prevCount,
+            )} ${coinName}*;\nСр. покупки: *${average} $${utils.getDiff(
+              average,
+              prevAverage,
+            )}*;\nТекущая стоимость: *${currentPrice} $${utils.getDiff(
+              currentPrice,
+              prevCurrentPrice,
+            )}*;\nСтатус: *${status}%${utils.getDiff(status, prevStatus, false)}*;\n`,
+          );
+
+          permandingValues[username] = {
+            ...permandingValues[username],
+            [coinName]: {
+              prevTotal: total,
+              prevCount: count,
+              prevAverage: average,
+              prevCurrentPrice: currentPrice,
+              prevStatus: status,
+            },
+          };
         });
 
         const sumPriceCurrent = round(sum(currentPriceAll), 2);
 
+        const { prevSumPriceCurrent } = permandingValues[username];
+
         answerMessages.push(
-          `Всего вложил: *${totalAll}* $;\nСостояние кошелька: ${sumPriceCurrent} $`,
+          `Всего вложил: *${totalAll}* $;\nСостояние кошелька: ${sumPriceCurrent} $${utils.getDiff(
+            sumPriceCurrent,
+            prevSumPriceCurrent,
+          )}.`,
         );
+
+        permandingValues[username] = {
+          ...permandingValues[username],
+          prevSumPriceCurrent: sumPriceCurrent,
+        };
 
         return await bot.sendMessage(id, answerMessages.join('\n'), opts);
       }

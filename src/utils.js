@@ -1,3 +1,7 @@
+const lodash = require('lodash');
+
+const { round } = lodash;
+
 const PARSE_STRING_REGEX = /[A-Z]{3}\s\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;
 
 exports.count = stringData => {
@@ -31,4 +35,12 @@ exports.count = stringData => {
   }));
 
   return result;
+};
+
+exports.getDiff = (value, prevValue, type = true) => {
+  if (!prevValue || value === prevValue) return '';
+
+  return value > prevValue
+    ? ` (${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🤑)`
+    : ` (-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🔻)`;
 };
