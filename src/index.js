@@ -24,7 +24,7 @@ const requestOptions = {
   uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
   qs: {
     start: '1',
-    limit: '10',
+    limit: '20',
     convert: 'USD',
   },
   headers: {
@@ -51,20 +51,14 @@ const permandingValues = {};
 
 const start = async () => {
   bot.setMyCommands([
-    { command: '/start', description: 'Welcome' },
-    { command: '/show', description: 'Показать ваши сохраненные данные кошелька.' },
-    { command: '/check', description: 'Посчитать всё в кошельке.' },
+    { command: '/show', description: '📄Показать ваши сохраненные данные кошелька.📄' },
+    { command: '/check', description: '🔄Посчитать всё в кошельке.🔄' },
   ]);
 
   bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
-    bot.deleteMessage(id, message_id - 1);
     bot.deleteMessage(id, message_id);
 
     try {
-      if (text === '/start') {
-        return bot.sendMessage(id, `Добро пожаловать в телеграм бот подсчета крипто-кошелька!`);
-      }
-
       if (text === '/show') {
         return bot.sendMessage(id, `${walletList[username]}`, opts);
       }

@@ -2,7 +2,7 @@ const lodash = require('lodash');
 
 const { round } = lodash;
 
-const PARSE_STRING_REGEX = /[A-Z]{3}\s(-?)\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;
+const PARSE_STRING_REGEX = /[A-Z]{3,6}\s(-?)\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;
 
 exports.count = stringData => {
   const data = stringData.match(PARSE_STRING_REGEX);
@@ -24,6 +24,10 @@ exports.count = stringData => {
     } else {
       coin.count += count;
       coin.total += price * count;
+
+      if (coin.total < 0) {
+        coin.total = 0;
+      }
     }
   });
 
