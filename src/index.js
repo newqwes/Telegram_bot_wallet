@@ -51,8 +51,8 @@ const permandingValues = {};
 
 const start = async () => {
   bot.setMyCommands([
-    { command: '/show', description: '📄Показать ваши сохраненные данные кошелька.📄' },
-    { command: '/check', description: '🔄Посчитать всё в кошельке.🔄' },
+    { command: '/show', description: '📄📄📄📄📄📄📄📄📄📄' },
+    { command: '/check', description: '🔄🔄🔄🔄🔄🔄🔄🔄🔄🔄' },
   ]);
 
   bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
@@ -105,21 +105,23 @@ const start = async () => {
             permandingValues,
           );
 
-          answerMessages.push(
-            `В *${coinName}* ты всего вложил: *${total} $${utils.getDiff(
-              total,
-              prevTotal,
-            )}*;\nУ тебя: *${count}${utils.getDiff(
-              count,
-              prevCount,
-            )} ${coinName}*;\nСр. покупки: *${average} $${utils.getDiff(
-              average,
-              prevAverage,
-            )}*;\nТекущая стоимость: *${currentPrice} $${utils.getDiff(
-              currentPrice,
-              prevCurrentPrice,
-            )}*;\nСтатус: *${status}%${utils.getDiff(status, prevStatus, false)}*;\n`,
-          );
+          if (total !== 0) {
+            answerMessages.push(
+              `В *${coinName}* ты всего вложил: *${total}$${utils.getDiff(
+                total,
+                prevTotal,
+              )}*\nУ тебя: *${round(count, 6)}${utils.getDiff(
+                count,
+                prevCount,
+              )}${coinName}*\nСр. покупки: *${average}$${utils.getDiff(
+                average,
+                prevAverage,
+              )}*\nТекущая стоимость: *${currentPrice}$${utils.getDiff(
+                currentPrice,
+                prevCurrentPrice,
+              )}*\nСтатус: *${status}%${utils.getDiff(status, prevStatus, false)}*\n`,
+            );
+          }
 
           permandingValues[username] = {
             ...permandingValues[username],
@@ -138,10 +140,10 @@ const start = async () => {
         const { prevSumPriceCurrent } = permandingValues[username];
 
         answerMessages.push(
-          `Всего вложил: *${totalAll}* $;\nСостояние кошелька: ${sumPriceCurrent} $${utils.getDiff(
+          `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: ${round(
             sumPriceCurrent,
-            prevSumPriceCurrent,
-          )}.`,
+            2,
+          )}$${utils.getDiff(sumPriceCurrent, prevSumPriceCurrent)}`,
         );
 
         permandingValues[username] = {
