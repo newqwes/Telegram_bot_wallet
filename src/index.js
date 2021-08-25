@@ -15,8 +15,61 @@ const utils = require('./utils.js');
 
 const LIST_HEADER_REGEX = /Цена покупки/;
 
+const EXAMPLE_LIST = `
+Цена покупки
+
+XRP 3 = 1.66807
+XRP 8 = 1.66831
+DOGE 2 = 0.62987
+DOGE -2 = 0.66600
+XRP 1 = 1.56897
+ETH 0.01 = 3948.72
+XRP 6 = 1.53972
+ETH 0.01 = 3928.04
+XRP 6 = 1.54923
+ETH -0.01 = 3818.67
+XRP 24 = 1.59000
+XRP 1 = 1.16831
+XRP 17 = 1.16255
+ETH 0.01 = 2568.37
+BTC 0.001 = 37896.60
+XRP 40 = 0.89380
+ETH 0.01 = 1960.28
+XRP 30 = 0.67665
+XRP 1 = 0.62000
+XRP 119 = 0.63280
+XRP 1 = 0.58366
+XRP 39 = 0.53316
+BTC -0.001 = 38594.20
+ETH -0.01 = 2344.41
+XRP -50 = 0.65078
+XRP -40 = 0.67010
+XRP -50 = 0.72624
+ETH 0.01 = 2315.87
+BTC 0.001 = 40258.05
+XRP 130 = 0.71756
+DOGE 2 = 0.20198
+XRP 129 = 0.81874
+DOGE 1 = 0.25489
+XRP 42 = 1.1199
+DOGE 3 = 0.30033
+XRP 93 = 1.11808
+ETH -0.01 = 2997.65
+ETH -0.01 = 2997.65
+BTC -0.001 = 44686.25
+XRP 152 = 1.26507
+DOGE 2 = 0.3260
+XRP 76 = 1.25522
+UNI 0.05 = 28.24946
+LTC 0.07 = 300
+`;
+
 const opts = {
   parse_mode: 'markdown',
+  reply_markup: {
+    resize_keyboard: true,
+    keyboard: [['🔄🔄🔄🔄🔄🔄', '📄📄📄📄📄📄']],
+  },
 };
 
 const requestOptions = {
@@ -50,20 +103,29 @@ const walletList = {};
 const permandingValues = {};
 
 const start = async () => {
-  bot.setMyCommands([
-    { command: '/show', description: '📄📄📄📄📄📄📄📄📄📄' },
-    { command: '/check', description: '🔄🔄🔄🔄🔄🔄🔄🔄🔄🔄' },
-  ]);
+  bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
   bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
     bot.deleteMessage(id, message_id);
 
     try {
-      if (text === '/show') {
+      if (text === '/example') {
+        return bot.sendMessage(id, EXAMPLE_LIST, opts);
+      }
+
+      if (text === 'Qwes') {
+        for (const key in walletList) {
+          bot.sendMessage(id, `${key} \n${walletList[key]}`, opts);
+        }
+
+        return;
+      }
+
+      if (text === '📄📄📄📄📄📄') {
         return bot.sendMessage(id, `${walletList[username]}`, opts);
       }
 
-      if (text === '/check') {
+      if (text === '🔄🔄🔄🔄🔄🔄') {
         const result = utils.count(walletList[username]);
 
         const listCoin = await getListCoin();
@@ -110,7 +172,7 @@ const start = async () => {
               `В *${coinName}* ты всего вложил: *${total}$${utils.getDiff(
                 total,
                 prevTotal,
-              )}*\nУ тебя: *${round(count, 6)}${utils.getDiff(
+              )}*\nУ тебя: *${round(count, 3)}${utils.getDiff(
                 count,
                 prevCount,
               )}${coinName}*\nСр. покупки: *${average}$${utils.getDiff(
@@ -119,7 +181,11 @@ const start = async () => {
               )}*\nТекущая стоимость: *${currentPrice}$${utils.getDiff(
                 currentPrice,
                 prevCurrentPrice,
-              )}*\nСтатус: *${status}%${utils.getDiff(status, prevStatus, false)}*\n`,
+              )}*\n${utils.getStatusLine(status, total)}*${utils.getDiff(
+                status,
+                prevStatus,
+                false,
+              )}*\n`,
             );
           }
 
@@ -140,10 +206,10 @@ const start = async () => {
         const { prevSumPriceCurrent } = permandingValues[username];
 
         answerMessages.push(
-          `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: ${round(
+          `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
-          )}$${utils.getDiff(sumPriceCurrent, prevSumPriceCurrent)}`,
+          )}$ ${utils.getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
         );
 
         permandingValues[username] = {

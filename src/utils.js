@@ -45,6 +45,16 @@ exports.getDiff = (value, prevValue, type = true) => {
   if (!prevValue || value === prevValue) return '';
 
   return value > prevValue
-    ? ` (${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🤑)`
-    : ` (-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🔻)`;
+    ? ` [${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🤑]`
+    : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🥺]`;
+};
+
+exports.getStatusLine = (status, total) => {
+  const clearProfite = status - 100;
+  const prefix = clearProfite >= 0 ? '🟢' : '🔴';
+
+  return `Статус: ${prefix}*${round((clearProfite / 100) * total, 1)}$ (${round(
+    clearProfite,
+    1,
+  )}%)*`;
 };
