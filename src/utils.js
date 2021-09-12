@@ -49,12 +49,11 @@ exports.getDiff = (value, prevValue, type = true) => {
     : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🥺]`;
 };
 
-exports.getStatusLine = (status, total) => {
-  const clearProfite = status - 100;
-  const prefix = clearProfite >= 0 ? '🟢' : '🔴';
+exports.getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
+exports.getStatusClearProfite = (status, total) => round(((status - 100) / 100) * total, 1);
 
-  return `Статус: ${prefix}*${round((clearProfite / 100) * total, 1)}$ (${round(
-    clearProfite,
+exports.getStatusLine = (status, total) =>
+  `Статус: ${getStatusEmoji(status)}*${getStatusClearProfite(status, total)}$ (${round(
+    status - 100,
     1,
   )}%)*`;
-};

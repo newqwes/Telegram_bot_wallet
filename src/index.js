@@ -77,7 +77,7 @@ const requestOptions = {
   uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
   qs: {
     start: '1',
-    limit: '100',
+    limit: '500',
     convert: 'USD',
   },
   headers: {
@@ -155,12 +155,8 @@ const start = async () => {
           totalAll += total;
           currentPriceAll.push(currentPrice * count);
 
-          const { prevTotal, prevCount, prevAverage, prevCurrentPrice, prevStatus } = getOr(
+          const { prevStatus } = getOr(
             {
-              prevTotal: null,
-              prevCount: null,
-              prevAverage: null,
-              prevCurrentPrice: null,
               prevStatus: null,
             },
             [username, coinName],
@@ -169,23 +165,10 @@ const start = async () => {
 
           if (total !== 0) {
             answerMessages.push(
-              `В *${coinName}* ты всего вложил: *${total}$${utils.getDiff(
-                total,
-                prevTotal,
-              )}*\nУ тебя: *${round(count, 3)}${utils.getDiff(
-                count,
-                prevCount,
-              )}${coinName}*\nСр. покупки: *${average}$${utils.getDiff(
-                average,
-                prevAverage,
-              )}*\nТекущая стоимость: *${currentPrice}$${utils.getDiff(
-                currentPrice,
-                prevCurrentPrice,
-              )}*\n${utils.getStatusLine(status, total)}*${utils.getDiff(
+              `${utils.getStatusEmoji(status)} ${coinName} ${total}$ (${utils.getStatusClearProfite(
                 status,
-                prevStatus,
-                false,
-              )}*\n`,
+                total,
+              )}$)${utils.getDiff(status, prevStatus, false)}`,
             );
           }
 
