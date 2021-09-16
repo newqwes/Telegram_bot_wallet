@@ -4,7 +4,7 @@ const rp = require('request-promise');
 const lodash = require('lodash');
 const lodashfp = require('lodash/fp');
 
-const { round, sum } = lodash;
+const { round, sum, keys } = lodash;
 const { getOr } = lodashfp;
 
 dotenv.config();
@@ -64,6 +64,11 @@ UNI 0.05 = 28.24946
 LTC 0.07 = 300
 `;
 
+const MY_TELEGRAM_CHAT_ID = 1041489066;
+
+const FIVE_MINUTE = 1000 * 60 * 5;
+const TEN_MINUTE = 1000 * 60 * 10;
+
 const opts = {
   parse_mode: 'markdown',
   reply_markup: {
@@ -102,6 +107,47 @@ const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 const walletList = {};
 const permandingValues = {};
 
+setInterval(async () => {
+  const myPermandingValues = getOr(null, ['newqwes'], permandingValues);
+
+  if (myPermandingValues) {
+    const listCoin = await getListCoin();
+    const myCoinsName = keys(myPermandingValues);
+
+    myCoinsName.forEach(myCoinName => {
+      const currency = listCoin.data.find(({ symbol }) => symbol === myCoinName);
+
+      if (!currency) return;
+
+      const currentPrice = getOr(null, ['quote', 'USD', 'price'], currency);
+
+      if (!currentPrice) return;
+
+      const prevCurrentPrice = getOr(null, [myCoinName, 'prevCurrentPrice'], myPermandingValues);
+
+      if (!prevCurrentPrice) return;
+
+      const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
+
+      if (changesPricePersent > 2) {
+        return bot.sendMessage(
+          MY_TELEGRAM_CHAT_ID,
+          `${myCoinName} Поднялся на ${changesPricePersent}%🔼`,
+          opts,
+        );
+      }
+
+      if (changesPricePersent < -2) {
+        return bot.sendMessage(
+          MY_TELEGRAM_CHAT_ID,
+          `${myCoinName} Упал на ${changesPricePersent}%🔻`,
+          opts,
+        );
+      }
+    });
+  }
+}, TEN_MINUTE);
+
 const start = async () => {
   bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
@@ -110,6 +156,7 @@ const start = async () => {
 
     try {
       if (text === '/example') {
+        console.log(id);
         return bot.sendMessage(id, EXAMPLE_LIST, opts);
       }
 

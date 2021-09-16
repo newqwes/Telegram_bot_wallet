@@ -45,8 +45,8 @@ exports.getDiff = (value, prevValue, type = true) => {
   if (!prevValue || value === prevValue) return '';
 
   return value > prevValue
-    ? ` [${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🤑]`
-    : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🥺]`;
+    ? ` [${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🔼]`
+    : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🔻]`;
 };
 
 exports.getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
