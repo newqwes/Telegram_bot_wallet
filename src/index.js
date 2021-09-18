@@ -12,6 +12,7 @@ dotenv.config();
 const { BOT_TOKEN, AUTH_KEY } = process.env;
 
 const utils = require('./utils.js');
+const { isEmpty } = require('lodash');
 
 const LIST_HEADER_REGEX = /Цена покупки/;
 
@@ -113,6 +114,7 @@ setInterval(async () => {
   if (myPermandingValues) {
     const listCoin = await getListCoin();
     const myCoinsName = keys(myPermandingValues);
+    const result = {};
 
     myCoinsName.forEach(myCoinName => {
       const currency = listCoin.data.find(({ symbol }) => symbol === myCoinName);
@@ -129,22 +131,27 @@ setInterval(async () => {
 
       const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
 
-      if (changesPricePersent > 2) {
-        return bot.sendMessage(
-          MY_TELEGRAM_CHAT_ID,
-          `${myCoinName} Поднялся на ${changesPricePersent}%🔼`,
-          opts,
-        );
+      if (changesPricePersent > 0.1) {
+        result[myCoinName] = changesPricePersent;
       }
 
-      if (changesPricePersent < -2) {
-        return bot.sendMessage(
-          MY_TELEGRAM_CHAT_ID,
-          `${myCoinName} Упал на ${changesPricePersent}%🔻`,
-          opts,
-        );
+      if (changesPricePersent < -0.1) {
+        result[myCoinName] = changesPricePersent;
       }
     });
+    const arrResult = [];
+
+    for (key in result) {
+      if (result[key] > 0) {
+        arrResult.push(`${key} Поднялся на ${result[key]}%🔼`);
+      } else {
+        arrResult.push(`${key} Упал на ${result[key]}%🔻`);
+      }
+    }
+
+    if (!isEmpty(arrResult)) {
+      bot.sendMessage(MY_TELEGRAM_CHAT_ID, arrResult.join('\n'), opts);
+    }
   }
 }, TEN_MINUTE);
 
