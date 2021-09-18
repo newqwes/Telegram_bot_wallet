@@ -131,11 +131,11 @@ setInterval(async () => {
 
       const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
 
-      if (changesPricePersent > 0.1) {
+      if (changesPricePersent > 3) {
         result[myCoinName] = changesPricePersent;
       }
 
-      if (changesPricePersent < -0.1) {
+      if (changesPricePersent < -3) {
         result[myCoinName] = changesPricePersent;
       }
     });
