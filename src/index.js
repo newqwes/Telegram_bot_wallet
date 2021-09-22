@@ -4,7 +4,7 @@ const rp = require('request-promise');
 const lodash = require('lodash');
 const lodashfp = require('lodash/fp');
 
-const { round, sum, keys } = lodash;
+const { round, sum, keys, isFinite } = lodash;
 const { getOr } = lodashfp;
 
 dotenv.config();
@@ -16,65 +16,32 @@ const { isEmpty } = require('lodash');
 
 const LIST_HEADER_REGEX = /Цена покупки/;
 
+let timeoutId = null;
+
 const EXAMPLE_LIST = `
 Цена покупки
 
-XRP 3 = 1.66807
-XRP 8 = 1.66831
-DOGE 2 = 0.62987
-DOGE -2 = 0.66600
-XRP 1 = 1.56897
-ETH 0.01 = 3948.72
-XRP 6 = 1.53972
-ETH 0.01 = 3928.04
-XRP 6 = 1.54923
-ETH -0.01 = 3818.67
-XRP 24 = 1.59000
-XRP 1 = 1.16831
-XRP 17 = 1.16255
-ETH 0.01 = 2568.37
-BTC 0.001 = 37896.60
-XRP 40 = 0.89380
-ETH 0.01 = 1960.28
-XRP 30 = 0.67665
-XRP 1 = 0.62000
-XRP 119 = 0.63280
-XRP 1 = 0.58366
-XRP 39 = 0.53316
-BTC -0.001 = 38594.20
-ETH -0.01 = 2344.41
-XRP -50 = 0.65078
-XRP -40 = 0.67010
-XRP -50 = 0.72624
-ETH 0.01 = 2315.87
-BTC 0.001 = 40258.05
-XRP 130 = 0.71756
-DOGE 2 = 0.20198
-XRP 129 = 0.81874
-DOGE 1 = 0.25489
-XRP 42 = 1.1199
-DOGE 3 = 0.30033
-XRP 93 = 1.11808
-ETH -0.01 = 2997.65
-ETH -0.01 = 2997.65
-BTC -0.001 = 44686.25
-XRP 152 = 1.26507
-DOGE 2 = 0.3260
-XRP 76 = 1.25522
-UNI 0.05 = 28.24946
-LTC 0.07 = 300
+XRP 300 = 1.66807
+DOGE 2000 = 0.62987
+DOGE -1000 = 0.9999
 `;
 
-const MY_TELEGRAM_CHAT_ID = 1041489066;
-
-const FIVE_MINUTE = 1000 * 60 * 5;
-const TEN_MINUTE = 1000 * 60 * 10;
+const MINUTE = 1000 * 60;
+const TEN_MINUTE = MINUTE * 10;
 
 const opts = {
   parse_mode: 'markdown',
   reply_markup: {
     resize_keyboard: true,
-    keyboard: [['🔄🔄🔄🔄🔄🔄', '📄📄📄📄📄📄']],
+    keyboard: [['🔄🔄🔄🔄', '📄📄📄📄', '⏰⏰⏰⏰']],
+  },
+};
+
+const againOptions = {
+  parse_mode: 'markdown',
+  reply_markup: {
+    resize_keyboard: true,
+    keyboard: [['0.1', '1', '2', '3', '4', '5', '6', '7', '8']],
   },
 };
 
@@ -108,8 +75,8 @@ const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 const walletList = {};
 const permandingValues = {};
 
-setInterval(async () => {
-  const myPermandingValues = getOr(null, ['newqwes'], permandingValues);
+const runNotification = async (username, trigerPersent, chatId) => {
+  const myPermandingValues = getOr(null, [username], permandingValues);
 
   if (myPermandingValues) {
     const listCoin = await getListCoin();
@@ -131,29 +98,30 @@ setInterval(async () => {
 
       const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
 
-      if (changesPricePersent > 3) {
+      if (changesPricePersent > trigerPersent) {
         result[myCoinName] = changesPricePersent;
       }
 
-      if (changesPricePersent < -3) {
+      if (changesPricePersent < -trigerPersent) {
         result[myCoinName] = changesPricePersent;
       }
     });
+
     const arrResult = [];
 
     for (key in result) {
-      if (result[key] > 0) {
-        arrResult.push(`${key} Поднялся на ${result[key]}%🔼`);
-      } else {
-        arrResult.push(`${key} Упал на ${result[key]}%🔻`);
-      }
+      arrResult.push(
+        result[key] > 0
+          ? `🟢 ${key} Поднялся на ${result[key]}%🔼`
+          : `🔴 ${key} Упал на ${result[key]}%🔻`,
+      );
     }
 
     if (!isEmpty(arrResult)) {
-      bot.sendMessage(MY_TELEGRAM_CHAT_ID, arrResult.join('\n'), opts);
+      bot.sendMessage(chatId, arrResult.join('\n'), opts);
     }
   }
-}, TEN_MINUTE);
+};
 
 const start = async () => {
   bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
@@ -162,6 +130,8 @@ const start = async () => {
     bot.deleteMessage(id, message_id);
 
     try {
+      const textLikeNumber = Number(text);
+
       if (text === '/example') {
         console.log(id);
         return bot.sendMessage(id, EXAMPLE_LIST, opts);
@@ -175,11 +145,11 @@ const start = async () => {
         return;
       }
 
-      if (text === '📄📄📄📄📄📄') {
+      if (text === '📄📄📄📄') {
         return bot.sendMessage(id, `${walletList[username]}`, opts);
       }
 
-      if (text === '🔄🔄🔄🔄🔄🔄') {
+      if (text === '🔄🔄🔄🔄') {
         const result = utils.count(walletList[username]);
 
         const listCoin = await getListCoin();
@@ -255,6 +225,31 @@ const start = async () => {
         };
 
         return await bot.sendMessage(id, answerMessages.join('\n'), opts);
+      }
+
+      if (text === '⏰⏰⏰⏰') {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+
+          return bot.sendMessage(id, 'Оповещение остановленно!', opts);
+        }
+
+        return bot.sendMessage(
+          id,
+          'Введите % изменения за рамками которого придет уведомление:',
+          againOptions,
+        );
+      }
+
+      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 9) {
+        timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
+
+        return bot.sendMessage(
+          id,
+          `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
+          opts,
+        );
       }
 
       if (LIST_HEADER_REGEX.test(text)) {
