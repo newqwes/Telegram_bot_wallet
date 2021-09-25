@@ -1,9 +1,7 @@
 import TelegraAPI from 'node-telegram-bot-api';
 import { round, sum, keys, isFinite, isEmpty, forEach } from 'lodash';
 import { getOr } from 'lodash/fp';
-
-// import sequelize from './database';
-// import UserModel from './models';
+import fs from 'fs';
 
 import { getCount, getStatusEmoji, getStatusClearProfite, getDiff, getListCoin } from './utils.js';
 import { AGAIN_MESSAGE_OPTIONS, MESSAGE_OPTIONS } from './constants/options.js';
@@ -15,7 +13,6 @@ import {
   FOUR_MINUTE,
 } from './constants/index.js';
 
-const walletList = {};
 const permandingValues = {};
 
 let timeoutId = null;
@@ -73,13 +70,6 @@ const runNotification = async (username, trigerPersent, chatId) => {
 };
 
 const start = async () => {
-  // try {
-  //   await sequelize.authenticate();
-  //   await sequelize.sync();
-  // } catch (e) {
-  //   console.log('Подключение к бд сломалось', e);
-  // }
-
   bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
   bot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
@@ -89,8 +79,6 @@ const start = async () => {
       const textLikeNumber = Number(text);
 
       if (text === '/start') {
-        // await UserModel.create({ id });
-
         return bot.sendMessage(id, 'Welcome to analytics wallet');
       }
 
@@ -99,19 +87,30 @@ const start = async () => {
       }
 
       if (text === 'Qwes') {
-        forEach(walletList, (value, key) => {
-          bot.sendMessage(id, `${key} \n${value}`, MESSAGE_OPTIONS);
-        });
+        // forEach(walletList, (value, key) => {
+        //   bot.sendMessage(id, `${key} \n${value}`, MESSAGE_OPTIONS);
+        // });
 
         return;
       }
 
       if (text === '📄📄📄📄') {
-        return bot.sendMessage(id, `${walletList[username]}`, MESSAGE_OPTIONS);
+        fs.readFile(`${username}.txt`, 'utf8', (err, data) => {
+          if (err) throw err;
+          console.log(`OK: ${username}`);
+          bot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
+        });
+
+        return;
       }
 
       if (text === '🔄🔄🔄🔄') {
-        const result = getCount(walletList[username]);
+        let result;
+        fs.readFile(`${username}.txt`, 'utf8', (err, data) => {
+          if (err) throw err;
+          console.log(`OK: ${username}`);
+          result = getCount(data);
+        });
 
         const listCoin = await getListCoin();
 
@@ -216,7 +215,10 @@ const start = async () => {
       }
 
       if (LIST_HEADER_REGEX.test(text)) {
-        walletList[username] = text;
+        fs.writeFile(`${username}.txt`, text, err => {
+          if (err) return console.log(err);
+          console.log('save to .txt');
+        });
 
         return await bot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
       }
