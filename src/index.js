@@ -1,79 +1,26 @@
-const dotenv = require('dotenv');
-const TelegraAPI = require('node-telegram-bot-api');
-const rp = require('request-promise');
-const lodash = require('lodash');
-const lodashfp = require('lodash/fp');
+import TelegraAPI from 'node-telegram-bot-api';
+import { round, sum, keys, isFinite, isEmpty, forEach } from 'lodash';
+import { getOr } from 'lodash/fp';
 
-const { round, sum, keys, isFinite } = lodash;
-const { getOr } = lodashfp;
+// import sequelize from './database';
+// import UserModel from './models';
 
-dotenv.config();
-
-const { BOT_TOKEN, AUTH_KEY } = process.env;
-
-const utils = require('./utils.js');
-const { isEmpty } = require('lodash');
-
-const LIST_HEADER_REGEX = /Цена покупки/;
-
-let timeoutId = null;
-
-const EXAMPLE_LIST = `
-Цена покупки
-
-XRP 300 = 1.66807
-DOGE 2000 = 0.62987
-DOGE -1000 = 0.9999
-`;
-
-const MINUTE = 1000 * 60;
-const TEN_MINUTE = MINUTE * 10;
-
-const opts = {
-  parse_mode: 'markdown',
-  reply_markup: {
-    resize_keyboard: true,
-    keyboard: [['🔄🔄🔄🔄', '📄📄📄📄', '⏰⏰⏰⏰']],
-  },
-};
-
-const againOptions = {
-  parse_mode: 'markdown',
-  reply_markup: {
-    resize_keyboard: true,
-    keyboard: [['0.1', '1', '2', '3', '4', '5', '6', '7', '8']],
-  },
-};
-
-const requestOptions = {
-  method: 'GET',
-  uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
-  qs: {
-    start: '1',
-    limit: '350',
-    convert: 'USD',
-  },
-  headers: {
-    'X-CMC_PRO_API_KEY': AUTH_KEY,
-  },
-  json: true,
-  gzip: true,
-};
-
-const getListCoin = async () => {
-  try {
-    const listCoin = await rp(requestOptions);
-
-    return listCoin;
-  } catch (error) {
-    console.log('API call error:', error.message);
-  }
-};
-
-const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
+import { getCount, getStatusEmoji, getStatusClearProfite, getDiff, getListCoin } from './utils.js';
+import { AGAIN_MESSAGE_OPTIONS, MESSAGE_OPTIONS } from './constants/options.js';
+import {
+  BOT_TOKEN,
+  EXAMPLE_LIST,
+  LIST_HEADER_REGEX,
+  MINUTE,
+  TEN_MINUTE,
+} from './constants/index.js';
 
 const walletList = {};
 const permandingValues = {};
+
+let timeoutId = null;
+
+const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 
 const runNotification = async (username, trigerPersent, chatId) => {
   const myPermandingValues = getOr(null, [username], permandingValues);
@@ -109,55 +56,65 @@ const runNotification = async (username, trigerPersent, chatId) => {
 
     const arrResult = [];
 
-    for (key in result) {
+    forEach(result, (value, key) => {
       arrResult.push(
-        result[key] > 0
-          ? `🟢 ${key} Поднялся на ${result[key]}%🔼`
-          : `🔴 ${key} Упал на ${result[key]}%🔻`,
+        result[key] > 0 ? `🟢 ${key} Поднялся на ${value}%🔼` : `🔴 ${key} Упал на ${value}%🔻`,
       );
-    }
+    });
 
     if (!isEmpty(arrResult)) {
-      bot.sendMessage(chatId, arrResult.join('\n'), opts);
+      bot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
     }
   }
 };
 
 const start = async () => {
+  // try {
+  //   await sequelize.authenticate();
+  //   await sequelize.sync();
+  // } catch (e) {
+  //   console.log('Подключение к бд сломалось', e);
+  // }
+
   bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
-  bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
-    bot.deleteMessage(id, message_id);
+  bot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
+    bot.deleteMessage(id, messageId);
 
     try {
       const textLikeNumber = Number(text);
 
+      if (text === '/start') {
+        // await UserModel.create({ id });
+
+        return bot.sendMessage(id, 'Welcome to analytics wallet');
+      }
+
       if (text === '/example') {
-        console.log(id);
-        return bot.sendMessage(id, EXAMPLE_LIST, opts);
+        return bot.sendMessage(id, EXAMPLE_LIST, MESSAGE_OPTIONS);
       }
 
       if (text === 'Qwes') {
-        for (const key in walletList) {
-          bot.sendMessage(id, `${key} \n${walletList[key]}`, opts);
-        }
+        forEach(walletList, (value, key) => {
+          bot.sendMessage(id, `${key} \n${value}`, MESSAGE_OPTIONS);
+        });
 
         return;
       }
 
       if (text === '📄📄📄📄') {
-        return bot.sendMessage(id, `${walletList[username]}`, opts);
+        return bot.sendMessage(id, `${walletList[username]}`, MESSAGE_OPTIONS);
       }
 
       if (text === '🔄🔄🔄🔄') {
-        const result = utils.count(walletList[username]);
+        const result = getCount(walletList[username]);
 
         const listCoin = await getListCoin();
 
         if (!result) return await bot.sendMessage(id, 'Неправильные данные!');
 
         let totalAll = 0;
-        let currentPriceAll = [];
+        const currentPriceAll = [];
 
         const answerMessages = [];
 
@@ -172,11 +129,11 @@ const start = async () => {
 
           const status = round((currentPrice * 100) / average, 2);
 
-          average = round(average, 4);
+          const averageRound = round(average, 4);
           currentPrice = round(currentPrice, 4);
-          total = round(total, 2);
+          const totalRound = round(total, 2);
 
-          totalAll += total;
+          totalAll += totalRound;
           currentPriceAll.push(currentPrice * count);
 
           const { prevStatus } = getOr(
@@ -187,21 +144,21 @@ const start = async () => {
             permandingValues,
           );
 
-          if (total !== 0) {
+          if (totalRound !== 0) {
             answerMessages.push(
-              `${utils.getStatusEmoji(status)} ${coinName} ${total}$ (${utils.getStatusClearProfite(
+              `${getStatusEmoji(status)} ${coinName} ${totalRound}$ (${getStatusClearProfite(
                 status,
-                total,
-              )}$)${utils.getDiff(status, prevStatus, false)}`,
+                totalRound,
+              )}$)${getDiff(status, prevStatus, false)}`,
             );
           }
 
           permandingValues[username] = {
             ...permandingValues[username],
             [coinName]: {
-              prevTotal: total,
+              prevTotal: totalRound,
               prevCount: count,
-              prevAverage: average,
+              prevAverage: averageRound,
               prevCurrentPrice: currentPrice,
               prevStatus: status,
             },
@@ -216,7 +173,7 @@ const start = async () => {
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
-          )}$ ${utils.getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
+          )}$ ${getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
         );
 
         permandingValues[username] = {
@@ -224,7 +181,7 @@ const start = async () => {
           prevSumPriceCurrent: sumPriceCurrent,
         };
 
-        return await bot.sendMessage(id, answerMessages.join('\n'), opts);
+        return await bot.sendMessage(id, answerMessages.join('\n'), MESSAGE_OPTIONS);
       }
 
       if (text === '⏰⏰⏰⏰') {
@@ -232,30 +189,32 @@ const start = async () => {
           clearTimeout(timeoutId);
           timeoutId = null;
 
-          return bot.sendMessage(id, 'Оповещение остановленно!', opts);
+          return bot.sendMessage(id, 'Оповещение остановленно!', MESSAGE_OPTIONS);
         }
 
         return bot.sendMessage(
           id,
           'Введите % изменения за рамками которого придет уведомление:',
-          againOptions,
+          AGAIN_MESSAGE_OPTIONS,
         );
       }
 
-      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 9) {
+      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 20) {
+        if (timeoutId) clearTimeout(timeoutId);
+
         timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
 
         return bot.sendMessage(
           id,
           `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
-          opts,
+          MESSAGE_OPTIONS,
         );
       }
 
       if (LIST_HEADER_REGEX.test(text)) {
         walletList[username] = text;
 
-        return await bot.sendMessage(id, 'Данные обновлены', opts);
+        return await bot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
       }
 
       return bot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');

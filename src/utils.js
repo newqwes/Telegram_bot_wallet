@@ -1,10 +1,18 @@
-const lodash = require('lodash');
+import { round } from 'lodash';
+import rp from 'request-promise';
 
-const { round } = lodash;
+import { PARSE_STRING_REGEX } from './constants';
+import { REQUESTS_OPTIONS } from './constants/options';
 
-const PARSE_STRING_REGEX = /[A-Z]{1,10}\s(-?)\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;
+export const getListCoin = async () => {
+  try {
+    return await rp(REQUESTS_OPTIONS);
+  } catch (error) {
+    console.log('API call error:', error.message);
+  }
+};
 
-exports.count = stringData => {
+export const getCount = stringData => {
   const data = stringData.match(PARSE_STRING_REGEX);
 
   if (!data) return;
@@ -12,7 +20,8 @@ exports.count = stringData => {
   const purchases = [];
 
   data.forEach(element => {
-    let [coinName, count, _, price] = element.split(' ');
+    // eslint-disable-next-line prefer-const
+    let [coinName, count, , price] = element.split(' ');
 
     count = Number(count);
     price = Number(price);
@@ -41,7 +50,7 @@ exports.count = stringData => {
   return result;
 };
 
-exports.getDiff = (value, prevValue, type = true) => {
+export const getDiff = (value, prevValue, type = true) => {
   if (!prevValue || value === prevValue) return '';
 
   return value > prevValue
@@ -49,10 +58,10 @@ exports.getDiff = (value, prevValue, type = true) => {
     : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🔻]`;
 };
 
-exports.getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
-exports.getStatusClearProfite = (status, total) => round(((status - 100) / 100) * total, 1);
+export const getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
+export const getStatusClearProfite = (status, total) => round(((status - 100) / 100) * total, 1);
 
-exports.getStatusLine = (status, total) =>
+export const getStatusLine = (status, total) =>
   `Статус: ${getStatusEmoji(status)}*${getStatusClearProfite(status, total)}$ (${round(
     status - 100,
     1,
