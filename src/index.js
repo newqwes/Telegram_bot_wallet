@@ -12,7 +12,7 @@ import {
   EXAMPLE_LIST,
   LIST_HEADER_REGEX,
   MINUTE,
-  TEN_MINUTE,
+  FOUR_MINUTE,
 } from './constants/index.js';
 
 const walletList = {};
@@ -63,7 +63,11 @@ const runNotification = async (username, trigerPersent, chatId) => {
     });
 
     if (!isEmpty(arrResult)) {
+      arrResult.push('Оповещение закончено!');
       bot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
+
+      clearTimeout(timeoutId);
+      timeoutId = null;
     }
   }
 };
@@ -202,11 +206,11 @@ const start = async () => {
       if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 20) {
         if (timeoutId) clearTimeout(timeoutId);
 
-        timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
+        timeoutId = setInterval(runNotification, FOUR_MINUTE, username, textLikeNumber, id);
 
         return bot.sendMessage(
           id,
-          `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
+          `Оповещение задано на каждые ${FOUR_MINUTE / MINUTE} минут при изменение в ${text}%!`,
           MESSAGE_OPTIONS,
         );
       }
