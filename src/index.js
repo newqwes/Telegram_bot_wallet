@@ -95,8 +95,9 @@ const start = async () => {
       }
 
       if (text === '📄📄📄📄') {
-        fs.readFile(`${username}.txt`, 'utf8', (err, data) => {
-          if (err) throw err;
+        fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
+          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+
           console.log(`OK: ${username}`);
           bot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
         });
@@ -106,8 +107,10 @@ const start = async () => {
 
       if (text === '🔄🔄🔄🔄') {
         let result;
-        fs.readFile(`${username}.txt`, 'utf8', (err, data) => {
-          if (err) throw err;
+
+        fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
+          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+
           console.log(`OK: ${username}`);
           result = getCount(data);
         });
