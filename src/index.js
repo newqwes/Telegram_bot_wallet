@@ -1,5 +1,5 @@
 import TelegraAPI from 'node-telegram-bot-api';
-import { round, sum, keys, isFinite, isEmpty, forEach } from 'lodash';
+import { round, sum, keys, isFinite, isEmpty, forEach, sortBy } from 'lodash';
 import { getOr } from 'lodash/fp';
 import fs from 'fs';
 
@@ -151,12 +151,15 @@ const start = async () => {
           );
 
           if (totalRound !== 0) {
-            answerMessages.push(
-              `${getStatusEmoji(status)} ${coinName} ${totalRound}$ (${getStatusClearProfite(
-                status,
-                totalRound,
-              )}$)${getDiff(status, prevStatus, false)}`,
-            );
+            answerMessages.push([
+              getStatusEmoji(status),
+              coinName,
+              totalRound,
+              '$ (',
+              getStatusClearProfite(status, totalRound),
+              '$)',
+              getDiff(status, prevStatus, false),
+            ]);
           }
 
           permandingValues[username] = {
@@ -175,7 +178,9 @@ const start = async () => {
 
         const { prevSumPriceCurrent } = permandingValues[username];
 
-        answerMessages.push(
+        const sortedAnswer = sortBy(answerMessages, arr => (arr[4] * 100) / arr[2]).reverse();
+
+        sortedAnswer.push(
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
@@ -187,7 +192,9 @@ const start = async () => {
           prevSumPriceCurrent: sumPriceCurrent,
         };
 
-        return await bot.sendMessage(id, answerMessages.join('\n'), MESSAGE_OPTIONS);
+        const replaceQree = sortedAnswer.map(answer => answer.toString().replace(/,/g, ' '));
+
+        return await bot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
       }
 
       if (text === '⏰⏰⏰⏰') {
