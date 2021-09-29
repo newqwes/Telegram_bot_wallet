@@ -60,11 +60,7 @@ const runNotification = async (username, trigerPersent, chatId) => {
     });
 
     if (!isEmpty(arrResult)) {
-      arrResult.push('Оповещение закончено!');
       bot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
-
-      clearTimeout(timeoutId);
-      timeoutId = null;
     }
   }
 };
