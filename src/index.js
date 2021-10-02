@@ -1,139 +1,122 @@
-const dotenv = require('dotenv');
-const TelegraAPI = require('node-telegram-bot-api');
-const rp = require('request-promise');
-const lodash = require('lodash');
-const lodashfp = require('lodash/fp');
+import TelegraAPI from 'node-telegram-bot-api';
+import { round, sum, keys, isFinite, isEmpty, forEach, sortBy } from 'lodash';
+import { getOr } from 'lodash/fp';
+import fs from 'fs';
 
-const { round, sum } = lodash;
-const { getOr } = lodashfp;
+import { getCount, getStatusEmoji, getStatusClearProfite, getDiff, getListCoin } from './utils.js';
+import { AGAIN_MESSAGE_OPTIONS, MESSAGE_OPTIONS } from './constants/options.js';
+import {
+  BOT_TOKEN,
+  EXAMPLE_LIST,
+  LIST_HEADER_REGEX,
+  MINUTE,
+  FOUR_MINUTE,
+} from './constants/index.js';
 
-dotenv.config();
+const permandingValues = {};
 
-const { BOT_TOKEN, AUTH_KEY } = process.env;
-
-const utils = require('./utils.js');
-
-const LIST_HEADER_REGEX = /Цена покупки/;
-
-const EXAMPLE_LIST = `
-Цена покупки
-
-XRP 3 = 1.66807
-XRP 8 = 1.66831
-DOGE 2 = 0.62987
-DOGE -2 = 0.66600
-XRP 1 = 1.56897
-ETH 0.01 = 3948.72
-XRP 6 = 1.53972
-ETH 0.01 = 3928.04
-XRP 6 = 1.54923
-ETH -0.01 = 3818.67
-XRP 24 = 1.59000
-XRP 1 = 1.16831
-XRP 17 = 1.16255
-ETH 0.01 = 2568.37
-BTC 0.001 = 37896.60
-XRP 40 = 0.89380
-ETH 0.01 = 1960.28
-XRP 30 = 0.67665
-XRP 1 = 0.62000
-XRP 119 = 0.63280
-XRP 1 = 0.58366
-XRP 39 = 0.53316
-BTC -0.001 = 38594.20
-ETH -0.01 = 2344.41
-XRP -50 = 0.65078
-XRP -40 = 0.67010
-XRP -50 = 0.72624
-ETH 0.01 = 2315.87
-BTC 0.001 = 40258.05
-XRP 130 = 0.71756
-DOGE 2 = 0.20198
-XRP 129 = 0.81874
-DOGE 1 = 0.25489
-XRP 42 = 1.1199
-DOGE 3 = 0.30033
-XRP 93 = 1.11808
-ETH -0.01 = 2997.65
-ETH -0.01 = 2997.65
-BTC -0.001 = 44686.25
-XRP 152 = 1.26507
-DOGE 2 = 0.3260
-XRP 76 = 1.25522
-UNI 0.05 = 28.24946
-LTC 0.07 = 300
-`;
-
-const opts = {
-  parse_mode: 'markdown',
-  reply_markup: {
-    resize_keyboard: true,
-    keyboard: [['🔄🔄🔄🔄🔄🔄', '📄📄📄📄📄📄']],
-  },
-};
-
-const requestOptions = {
-  method: 'GET',
-  uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
-  qs: {
-    start: '1',
-    limit: '100',
-    convert: 'USD',
-  },
-  headers: {
-    'X-CMC_PRO_API_KEY': AUTH_KEY,
-  },
-  json: true,
-  gzip: true,
-};
-
-const getListCoin = async () => {
-  try {
-    const listCoin = await rp(requestOptions);
-
-    return listCoin;
-  } catch (error) {
-    console.log('API call error:', error.message);
-  }
-};
+let timeoutId = null;
 
 const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
 
-const walletList = {};
-const permandingValues = {};
+const runNotification = async (username, trigerPersent, chatId) => {
+  const myPermandingValues = getOr(null, [username], permandingValues);
+
+  if (myPermandingValues) {
+    const listCoin = await getListCoin();
+    const myCoinsName = keys(myPermandingValues);
+    const result = {};
+
+    myCoinsName.forEach(myCoinName => {
+      const currency = listCoin.data.find(({ symbol }) => symbol === myCoinName);
+
+      if (!currency) return;
+
+      const currentPrice = getOr(null, ['quote', 'USD', 'price'], currency);
+
+      if (!currentPrice) return;
+
+      const prevCurrentPrice = getOr(null, [myCoinName, 'prevCurrentPrice'], myPermandingValues);
+
+      if (!prevCurrentPrice) return;
+
+      const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
+
+      if (changesPricePersent > trigerPersent) {
+        result[myCoinName] = changesPricePersent;
+      }
+
+      if (changesPricePersent < -trigerPersent) {
+        result[myCoinName] = changesPricePersent;
+      }
+    });
+
+    const arrResult = [];
+
+    forEach(result, (value, key) => {
+      arrResult.push(
+        result[key] > 0 ? `🟢 ${key} Поднялся на ${value}%🔼` : `🔴 ${key} Упал на ${value}%🔻`,
+      );
+    });
+
+    if (!isEmpty(arrResult)) {
+      bot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
+    }
+  }
+};
 
 const start = async () => {
   bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
-  bot.on('message', async ({ message_id, text, chat: { id, username } }) => {
-    bot.deleteMessage(id, message_id);
+  bot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
+    bot.deleteMessage(id, messageId);
 
     try {
+      const textLikeNumber = Number(text);
+
+      if (text === '/start') {
+        return bot.sendMessage(id, 'Welcome to analytics wallet');
+      }
+
       if (text === '/example') {
-        return bot.sendMessage(id, EXAMPLE_LIST, opts);
+        return bot.sendMessage(id, EXAMPLE_LIST, MESSAGE_OPTIONS);
       }
 
       if (text === 'Qwes') {
-        for (const key in walletList) {
-          bot.sendMessage(id, `${key} \n${walletList[key]}`, opts);
-        }
+        // forEach(walletList, (value, key) => {
+        //   bot.sendMessage(id, `${key} \n${value}`, MESSAGE_OPTIONS);
+        // });
 
         return;
       }
 
-      if (text === '📄📄📄📄📄📄') {
-        return bot.sendMessage(id, `${walletList[username]}`, opts);
+      if (text === '📄📄📄📄') {
+        fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
+          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+
+          console.log(`OK: ${username}`);
+          bot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
+        });
+
+        return;
       }
 
-      if (text === '🔄🔄🔄🔄🔄🔄') {
-        const result = utils.count(walletList[username]);
+      if (text === '🔄🔄🔄🔄') {
+        let result;
+
+        fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
+          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+
+          console.log(`OK: ${username}`);
+          result = getCount(data);
+        });
 
         const listCoin = await getListCoin();
 
         if (!result) return await bot.sendMessage(id, 'Неправильные данные!');
 
         let totalAll = 0;
-        let currentPriceAll = [];
+        const currentPriceAll = [];
 
         const answerMessages = [];
 
@@ -148,53 +131,39 @@ const start = async () => {
 
           const status = round((currentPrice * 100) / average, 2);
 
-          average = round(average, 4);
+          const averageRound = round(average, 4);
           currentPrice = round(currentPrice, 4);
-          total = round(total, 2);
+          const totalRound = round(total, 2);
 
-          totalAll += total;
+          totalAll += totalRound;
           currentPriceAll.push(currentPrice * count);
 
-          const { prevTotal, prevCount, prevAverage, prevCurrentPrice, prevStatus } = getOr(
+          const { prevStatus } = getOr(
             {
-              prevTotal: null,
-              prevCount: null,
-              prevAverage: null,
-              prevCurrentPrice: null,
               prevStatus: null,
             },
             [username, coinName],
             permandingValues,
           );
 
-          if (total !== 0) {
-            answerMessages.push(
-              `В *${coinName}* ты всего вложил: *${total}$${utils.getDiff(
-                total,
-                prevTotal,
-              )}*\nУ тебя: *${round(count, 3)}${utils.getDiff(
-                count,
-                prevCount,
-              )}${coinName}*\nСр. покупки: *${average}$${utils.getDiff(
-                average,
-                prevAverage,
-              )}*\nТекущая стоимость: *${currentPrice}$${utils.getDiff(
-                currentPrice,
-                prevCurrentPrice,
-              )}*\n${utils.getStatusLine(status, total)}*${utils.getDiff(
-                status,
-                prevStatus,
-                false,
-              )}*\n`,
-            );
+          if (totalRound !== 0) {
+            answerMessages.push([
+              getStatusEmoji(status),
+              coinName,
+              totalRound,
+              '$ (',
+              getStatusClearProfite(status, totalRound),
+              '$)',
+              getDiff(status, prevStatus, false),
+            ]);
           }
 
           permandingValues[username] = {
             ...permandingValues[username],
             [coinName]: {
-              prevTotal: total,
+              prevTotal: totalRound,
               prevCount: count,
-              prevAverage: average,
+              prevAverage: averageRound,
               prevCurrentPrice: currentPrice,
               prevStatus: status,
             },
@@ -205,11 +174,13 @@ const start = async () => {
 
         const { prevSumPriceCurrent } = permandingValues[username];
 
-        answerMessages.push(
+        const sortedAnswer = sortBy(answerMessages, arr => (arr[4] * 100) / arr[2]).reverse();
+
+        sortedAnswer.push(
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
-          )}$ ${utils.getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
+          )}$ ${getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
         );
 
         permandingValues[username] = {
@@ -217,13 +188,45 @@ const start = async () => {
           prevSumPriceCurrent: sumPriceCurrent,
         };
 
-        return await bot.sendMessage(id, answerMessages.join('\n'), opts);
+        const replaceQree = sortedAnswer.map(answer => answer.toString().replace(/,/g, ' '));
+
+        return await bot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
+      }
+
+      if (text === '⏰⏰⏰⏰') {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+
+          return bot.sendMessage(id, 'Оповещение остановленно!', MESSAGE_OPTIONS);
+        }
+
+        return bot.sendMessage(
+          id,
+          'Введите % изменения за рамками которого придет уведомление:',
+          AGAIN_MESSAGE_OPTIONS,
+        );
+      }
+
+      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 20) {
+        if (timeoutId) clearTimeout(timeoutId);
+
+        timeoutId = setInterval(runNotification, FOUR_MINUTE, username, textLikeNumber, id);
+
+        return bot.sendMessage(
+          id,
+          `Оповещение задано на каждые ${FOUR_MINUTE / MINUTE} минут при изменение в ${text}%!`,
+          MESSAGE_OPTIONS,
+        );
       }
 
       if (LIST_HEADER_REGEX.test(text)) {
-        walletList[username] = text;
+        fs.writeFile(`${username}.txt`, text, err => {
+          if (err) return console.log(err);
+          console.log('save to .txt');
+        });
 
-        return await bot.sendMessage(id, 'Данные обновлены', opts);
+        return await bot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
       }
 
       return bot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');
