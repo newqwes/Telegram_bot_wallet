@@ -1,23 +1,43 @@
-name: Deploy
+# name: Deploy
 
-on:
-  push:
-    branches:
-      - master
+# on:
+#   push:
+#     branches:
+#       - master
 
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         node-version: [12.x]
+#     steps:
+#       - uses: actions/checkout@v2
+#       - uses: actions/setup-node@v1
+#         with:
+#           node-version: ${{ matrix.node-version }}
+#           hosts: 'root@185.20.227.11'
+#           privateKey: ${{ secrets.KEY }}
+#           debug: false
+#           command: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
+#       - run: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
+
+name: remote ssh command
+on: [push]
 jobs:
-  deploy:
+
+  build:
+    name: Build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-          hosts: 'root@185.20.227.11'
-          privateKey: ${{ secrets.KEY }}
-          debug: false
-          command: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
-      - run: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@master
+      with:
+        host: 'root@185.20.227.11'
+        privateKey: ${{ secrets.KEY }}
+        script_stop: true
+        script: |
+        cd ../home/Telegram_bot_wallet
+        pm2 stop walletbot
+        git pull
+        pm2 start walletbot
