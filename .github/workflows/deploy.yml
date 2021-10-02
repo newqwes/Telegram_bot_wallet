@@ -24,3 +24,8 @@ jobs:
             pm2 stop walletbot
             git pull
             pm2 start walletbot
+          run: |
+            cd ../home/Telegram_bot_wallet
+            pm2 stop walletbot
+            git pull
+            pm2 start walletbot
