@@ -34,6 +34,7 @@ jobs:
         with:
           host: '85.20.227.11'
           username: 'root'
+          password: ${{ secrets.PASS }}
           key: ${{ secrets.KEY }}
           script_stop: true
           script: cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot
