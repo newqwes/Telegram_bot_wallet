@@ -17,10 +17,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           hosts: 'root@185.20.227.11'
-    privateKey: ${{ secrets.KEY }}
-    debug: false
-    command: |
-      cd ../home/Telegram_bot_wallet
-      pm2 stop walletbot
-      git pull
-      pm2 start walletbot
+          privateKey: ${{ secrets.KEY }}
+          debug: false
+          command: |
+            cd ../home/Telegram_bot_wallet
+            pm2 stop walletbot
+            git pull
+            pm2 start walletbot
