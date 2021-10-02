@@ -36,4 +36,4 @@ jobs:
           username: 'root'
           key: ${{ secrets.KEY }}
           script_stop: true
-          script: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
+          script: cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot
