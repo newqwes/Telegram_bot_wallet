@@ -25,19 +25,14 @@
 name: remote ssh command
 on: [push]
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-    - name: executing remote ssh commands using password
-      uses: appleboy/ssh-action@master
-      with:
-        host: 'root@185.20.227.11'
-        privateKey: ${{ secrets.KEY }}
-        script_stop: true
-        script: |
-        cd ../home/Telegram_bot_wallet
-        pm2 stop walletbot
-        git pull
-        pm2 start walletbot
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@master
+        with:
+          host: 'root@185.20.227.11'
+          privateKey: ${{ secrets.KEY }}
+          script_stop: true
+          script: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
