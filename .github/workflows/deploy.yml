@@ -32,7 +32,8 @@ jobs:
       - name: executing remote ssh commands using password
         uses: appleboy/ssh-action@master
         with:
-          host: 'root@185.20.227.11'
-          privateKey: ${{ secrets.KEY }}
+          host: '85.20.227.11'
+          username: 'root'
+          key: ${{ secrets.KEY }}
           script_stop: true
           script: 'cd ../home/Telegram_bot_wallet && pm2 stop walletbot && git pull && pm2 start walletbot'
