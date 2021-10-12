@@ -19,7 +19,7 @@ export const MESSAGE_OPTIONS = {
   parse_mode: 'markdown',
   reply_markup: {
     resize_keyboard: true,
-    keyboard: [['🔄🔄🔄🔄', '📄📄📄📄', '⏰⏰⏰⏰']],
+    keyboard: [['🔄🔄🔄', '💰💰💰', '📄📄📄', '⏰⏰⏰']],
   },
 };
 

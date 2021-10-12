@@ -10,7 +10,7 @@ import {
   EXAMPLE_LIST,
   LIST_HEADER_REGEX,
   MINUTE,
-  FOUR_MINUTE,
+  TEN_MINUTE,
 } from './constants/index.js';
 
 const permandingValues = {};
@@ -90,7 +90,20 @@ const start = async () => {
         return;
       }
 
-      if (text === '📄📄📄📄') {
+      if (text === '💰💰💰') {
+        const sortedAnswer = sortBy(permandingValues[username], ['prevStatus']);
+
+        console.log(sortedAnswer);
+
+        bot.sendMessage(
+          id,
+          `Покупай: ${sortedAnswer[0].coinName}, ${sortedAnswer[1].coinName},${sortedAnswer[2].coinName}`,
+          MESSAGE_OPTIONS,
+        );
+        return;
+      }
+
+      if (text === '📄📄📄') {
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
           if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
 
@@ -101,7 +114,7 @@ const start = async () => {
         return;
       }
 
-      if (text === '🔄🔄🔄🔄') {
+      if (text === '🔄🔄🔄') {
         let result;
 
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
@@ -161,6 +174,7 @@ const start = async () => {
           permandingValues[username] = {
             ...permandingValues[username],
             [coinName]: {
+              coinName,
               prevTotal: totalRound,
               prevCount: count,
               prevAverage: averageRound,
@@ -174,13 +188,16 @@ const start = async () => {
 
         const { prevSumPriceCurrent } = permandingValues[username];
 
-        const sortedAnswer = sortBy(answerMessages, arr => (arr[4] * 100) / arr[2]).reverse();
+        const sortedAnswer = sortBy(answerMessages, arr => arr[6]).reverse();
 
         sortedAnswer.push(
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
-          )}$ ${getDiff(sumPriceCurrent, prevSumPriceCurrent)}*`,
+          )}$\nДоход: ${round(sumPriceCurrent - totalAll, 2)}$ ${getDiff(
+            sumPriceCurrent,
+            prevSumPriceCurrent,
+          )}*`,
         );
 
         permandingValues[username] = {
@@ -193,7 +210,7 @@ const start = async () => {
         return await bot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
       }
 
-      if (text === '⏰⏰⏰⏰') {
+      if (text === '⏰⏰⏰') {
         if (timeoutId) {
           clearTimeout(timeoutId);
           timeoutId = null;
@@ -211,11 +228,11 @@ const start = async () => {
       if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 20) {
         if (timeoutId) clearTimeout(timeoutId);
 
-        timeoutId = setInterval(runNotification, FOUR_MINUTE, username, textLikeNumber, id);
+        timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
 
         return bot.sendMessage(
           id,
-          `Оповещение задано на каждые ${FOUR_MINUTE / MINUTE} минут при изменение в ${text}%!`,
+          `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
           MESSAGE_OPTIONS,
         );
       }
