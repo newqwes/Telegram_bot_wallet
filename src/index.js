@@ -91,15 +91,22 @@ const start = async () => {
       }
 
       if (text === '💰💰💰') {
-        const sortedAnswer = sortBy(permandingValues[username], ['prevStatus']);
+        if (permandingValues && permandingValues[username]) {
+          const sortedAnswer = sortBy(permandingValues[username], ['prevStatus']);
 
-        console.log(sortedAnswer);
+          bot.sendMessage(
+            id,
+            `Покупай: ${sortedAnswer[0].coinName}, ${sortedAnswer[1].coinName},${sortedAnswer[2].coinName}`,
+            MESSAGE_OPTIONS,
+          );
+        } else {
+          bot.sendMessage(
+            id,
+            'Обнови данные!',
+            MESSAGE_OPTIONS,
+          );
+        }
 
-        bot.sendMessage(
-          id,
-          `Покупай: ${sortedAnswer[0].coinName}, ${sortedAnswer[1].coinName},${sortedAnswer[2].coinName}`,
-          MESSAGE_OPTIONS,
-        );
         return;
       }
 
@@ -138,7 +145,7 @@ const start = async () => {
 
           let currentPrice;
 
-          if (!currency) currentPrice = 'Не найдено!';
+          if (!currency) return;
 
           currentPrice = currency.quote.USD.price;
 
