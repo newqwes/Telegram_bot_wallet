@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const { BOT_TOKEN, AUTH_KEY } = process.env;
-
+export const MY_CHAT = -663457323;
 export const EXAMPLE_LIST = `
 Цена покупки
 

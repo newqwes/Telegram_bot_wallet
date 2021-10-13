@@ -1,5 +1,5 @@
 import { round, sum, keys, isFinite, isEmpty, forEach } from 'lodash';
-import { get, isEqual, compose, sortBy, take, join, map } from 'lodash/fp';
+import { get, isEqual, compose, sortBy, take, join, map, getOr } from 'lodash/fp';
 import fs from 'fs';
 
 import MyBot from './config.js';
@@ -16,7 +16,8 @@ import {
   EXAMPLE_LIST,
   LIST_HEADER_REGEX,
   MINUTE,
-  TEN_MINUTE,
+  MY_CHAT,
+  TEN_MINUTE
 } from './constants/index.js';
 
 const permandingValues = {};
@@ -71,17 +72,17 @@ const start = async () => {
     { command: '/example', description: 'Send me message list like this...' },
   ]);
 
-  MyBot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
-    MyBot.deleteMessage(id, messageId);
-
+  MyBot.on('message', async ({ text, chat: { id, username } }) => {
     try {
       const textLikeNumber = Number(text);
 
       if (text === '/start') {
+        MyBot.sendMessage(MY_CHAT, `${username} ${text}`);
         return MyBot.sendMessage(id, 'Welcome to analytics wallet');
       }
 
       if (text === '/example') {
+        MyBot.sendMessage(MY_CHAT, `${username} ${text}`);
         return MyBot.sendMessage(id, EXAMPLE_LIST, MESSAGE_OPTIONS);
       }
 
@@ -94,6 +95,7 @@ const start = async () => {
           get(username),
         )(permandingValues);
 
+        MyBot.sendMessage(MY_CHAT, `${username}\n${text}\nПокупай: ${sortedAnswer || 'Да что угодно =)'}`);
         return MyBot.sendMessage(
           id,
           `Покупай: ${sortedAnswer || 'Да что угодно =)'}`,
@@ -105,24 +107,27 @@ const start = async () => {
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
           if (err) return MyBot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
 
-          console.log(`OK: ${username}`);
           MyBot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
+
+          MyBot.sendMessage(MY_CHAT, `${username}\n${text}\n${data}`);
         });
 
-        return;
+        return MyBot.sendMessage(id, 'Сделано!', MESSAGE_OPTIONS);
       }
 
       if (text === '🔄🔄🔄') {
         let result;
 
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
+          err && MyBot.sendMessage(MY_CHAT, `${username}\n${text}\nДанные не найдены`);
           if (err) return MyBot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
 
-          console.log(`OK: ${username}`);
           result = getCount(data);
         });
 
         const listCoin = await getListCoin();
+
+        !result && MyBot.sendMessage(MY_CHAT, `${username}\n${text}\nДанные не правильные`);
 
         if (!result) return await MyBot.sendMessage(id, 'Неправильные данные!');
 
@@ -207,6 +212,8 @@ const start = async () => {
           answer.toString().replace(/,/g, ' '),
         );
 
+        MyBot.sendMessage(MY_CHAT, `${username}\n${text}\n${replaceQree.join('\n')}`);
+
         return await MyBot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
       }
 
@@ -215,6 +222,7 @@ const start = async () => {
           clearTimeout(timeoutId);
           timeoutId = null;
 
+          MyBot.sendMessage(MY_CHAT, `${username}\n${text}\nОповещение остановленно!`);
           return MyBot.sendMessage(id, 'Оповещение остановленно!', MESSAGE_OPTIONS);
         }
 
@@ -236,6 +244,7 @@ const start = async () => {
           id,
         );
 
+        MyBot.sendMessage(MY_CHAT, `${username}\nОповещение ${text}`);
         return MyBot.sendMessage(
           id,
           `Оповещение задано на каждые ${
@@ -248,14 +257,16 @@ const start = async () => {
       if (LIST_HEADER_REGEX.test(text)) {
         fs.writeFile(`${username}.txt`, text, err => {
           if (err) return console.log(err);
-          console.log('save to .txt');
         });
 
+        MyBot.sendMessage(MY_CHAT, `${username}\nСписок ${text}`);
         return await MyBot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
       }
 
+      MyBot.sendMessage(MY_CHAT, `${username}\nНе понимаю${text}`);
       return MyBot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');
     } catch (e) {
+      MyBot.sendMessage(MY_CHAT, `${username}\nКакая то ошибочка ${text}`);
       return MyBot.sendMessage(id, 'Произошла какая то ошибочка!)');
     }
   });
