@@ -1,12 +1,18 @@
-import TelegraAPI from 'node-telegram-bot-api';
-import { round, sum, keys, isFinite, isEmpty, forEach, sortBy } from 'lodash';
-import { getOr } from 'lodash/fp';
+import { round, sum, keys, isFinite, isEmpty, forEach } from 'lodash';
+import { get, isEqual, compose, sortBy, take, join, map } from 'lodash/fp';
 import fs from 'fs';
 
-import { getCount, getStatusEmoji, getStatusClearProfite, getDiff, getListCoin } from './utils.js';
+import MyBot from './config.js';
+
+import {
+  getCount,
+  getStatusEmoji,
+  getStatusClearProfite,
+  getDiff,
+  getListCoin,
+} from './utils.js';
 import { AGAIN_MESSAGE_OPTIONS, MESSAGE_OPTIONS } from './constants/options.js';
 import {
-  BOT_TOKEN,
   EXAMPLE_LIST,
   LIST_HEADER_REGEX,
   MINUTE,
@@ -17,10 +23,8 @@ const permandingValues = {};
 
 let timeoutId = null;
 
-const bot = new TelegraAPI(BOT_TOKEN, { polling: true });
-
 const runNotification = async (username, trigerPersent, chatId) => {
-  const myPermandingValues = getOr(null, [username], permandingValues);
+  const myPermandingValues = get([username], permandingValues);
 
   if (myPermandingValues) {
     const listCoin = await getListCoin();
@@ -28,17 +32,12 @@ const runNotification = async (username, trigerPersent, chatId) => {
     const result = {};
 
     myCoinsName.forEach(myCoinName => {
-      const currency = listCoin.data.find(({ symbol }) => symbol === myCoinName);
+      const currency = listCoin.data.find(({ symbol }) => isEqual(symbol, myCoinName));
 
-      if (!currency) return;
+      const currentPrice = get(['quote', 'USD', 'price'], currency);
+      const prevCurrentPrice = get([myCoinName, 'prevCurrentPrice'], myPermandingValues);
 
-      const currentPrice = getOr(null, ['quote', 'USD', 'price'], currency);
-
-      if (!currentPrice) return;
-
-      const prevCurrentPrice = getOr(null, [myCoinName, 'prevCurrentPrice'], myPermandingValues);
-
-      if (!prevCurrentPrice) return;
+      if (!currentPrice || !prevCurrentPrice) return;
 
       const changesPricePersent = round((currentPrice * 100) / prevCurrentPrice - 100, 4);
 
@@ -55,67 +54,59 @@ const runNotification = async (username, trigerPersent, chatId) => {
 
     forEach(result, (value, key) => {
       arrResult.push(
-        result[key] > 0 ? `🟢 ${key} Поднялся на ${value}%🔼` : `🔴 ${key} Упал на ${value}%🔻`,
+        result[key] > 0
+          ? `🟢 ${key} Поднялся на ${value}%🔼`
+          : `🔴 ${key} Упал на ${value}%🔻`,
       );
     });
 
     if (!isEmpty(arrResult)) {
-      bot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
+      MyBot.sendMessage(chatId, arrResult.join('\n'), MESSAGE_OPTIONS);
     }
   }
 };
 
 const start = async () => {
-  bot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
+  MyBot.setMyCommands([
+    { command: '/example', description: 'Send me message list like this...' },
+  ]);
 
-  bot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
-    bot.deleteMessage(id, messageId);
+  MyBot.on('message', async ({ message_id: messageId, text, chat: { id, username } }) => {
+    MyBot.deleteMessage(id, messageId);
 
     try {
       const textLikeNumber = Number(text);
 
       if (text === '/start') {
-        return bot.sendMessage(id, 'Welcome to analytics wallet');
+        return MyBot.sendMessage(id, 'Welcome to analytics wallet');
       }
 
       if (text === '/example') {
-        return bot.sendMessage(id, EXAMPLE_LIST, MESSAGE_OPTIONS);
-      }
-
-      if (text === 'Qwes') {
-        // forEach(walletList, (value, key) => {
-        //   bot.sendMessage(id, `${key} \n${value}`, MESSAGE_OPTIONS);
-        // });
-
-        return;
+        return MyBot.sendMessage(id, EXAMPLE_LIST, MESSAGE_OPTIONS);
       }
 
       if (text === '💰💰💰') {
-        if (permandingValues && permandingValues[username]) {
-          const sortedAnswer = sortBy(permandingValues[username], ['prevStatus']);
+        const sortedAnswer = compose(
+          join(', '),
+          map('coinName'),
+          take(4),
+          sortBy('prevStatus'),
+          get(username),
+        )(permandingValues);
 
-          bot.sendMessage(
-            id,
-            `Покупай: ${sortedAnswer[0].coinName}, ${sortedAnswer[1].coinName},${sortedAnswer[2].coinName}`,
-            MESSAGE_OPTIONS,
-          );
-        } else {
-          bot.sendMessage(
-            id,
-            'Обнови данные!',
-            MESSAGE_OPTIONS,
-          );
-        }
-
-        return;
+        return MyBot.sendMessage(
+          id,
+          `Покупай: ${sortedAnswer || 'Да что угодно =)'}`,
+          MESSAGE_OPTIONS,
+        );
       }
 
       if (text === '📄📄📄') {
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
-          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+          if (err) return MyBot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
 
           console.log(`OK: ${username}`);
-          bot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
+          MyBot.sendMessage(id, `${data}`, MESSAGE_OPTIONS);
         });
 
         return;
@@ -125,7 +116,7 @@ const start = async () => {
         let result;
 
         fs.readFile(`${username}.txt`, 'utf8', async (err, data) => {
-          if (err) return bot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
+          if (err) return MyBot.sendMessage(id, 'Ваши данные не найдены, обновите их!');
 
           console.log(`OK: ${username}`);
           result = getCount(data);
@@ -133,7 +124,7 @@ const start = async () => {
 
         const listCoin = await getListCoin();
 
-        if (!result) return await bot.sendMessage(id, 'Неправильные данные!');
+        if (!result) return await MyBot.sendMessage(id, 'Неправильные данные!');
 
         let totalAll = 0;
         const currentPriceAll = [];
@@ -141,13 +132,13 @@ const start = async () => {
         const answerMessages = [];
 
         result.forEach(async ({ coinName, count, total, average }) => {
-          const currency = listCoin.data.find(({ symbol }) => symbol === coinName);
+          const currency = listCoin.data.find(({ symbol }) => isEqual(symbol, coinName));
 
           let currentPrice;
 
           if (!currency) return;
 
-          currentPrice = currency.quote.USD.price;
+          currentPrice = get(['quote', 'USD', 'price'], currency);
 
           const status = round((currentPrice * 100) / average, 2);
 
@@ -195,7 +186,7 @@ const start = async () => {
 
         const { prevSumPriceCurrent } = permandingValues[username];
 
-        const sortedAnswer = sortBy(answerMessages, arr => arr[6]).reverse();
+        const sortedAnswer = sortBy(arr => arr[6], answerMessages).reverse();
 
         sortedAnswer.push(
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
@@ -212,9 +203,11 @@ const start = async () => {
           prevSumPriceCurrent: sumPriceCurrent,
         };
 
-        const replaceQree = sortedAnswer.map(answer => answer.toString().replace(/,/g, ' '));
+        const replaceQree = sortedAnswer.map(answer =>
+          answer.toString().replace(/,/g, ' '),
+        );
 
-        return await bot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
+        return await MyBot.sendMessage(id, replaceQree.join('\n'), MESSAGE_OPTIONS);
       }
 
       if (text === '⏰⏰⏰') {
@@ -222,24 +215,32 @@ const start = async () => {
           clearTimeout(timeoutId);
           timeoutId = null;
 
-          return bot.sendMessage(id, 'Оповещение остановленно!', MESSAGE_OPTIONS);
+          return MyBot.sendMessage(id, 'Оповещение остановленно!', MESSAGE_OPTIONS);
         }
 
-        return bot.sendMessage(
+        return MyBot.sendMessage(
           id,
           'Введите % изменения за рамками которого придет уведомление:',
           AGAIN_MESSAGE_OPTIONS,
         );
       }
 
-      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 20) {
+      if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 30) {
         if (timeoutId) clearTimeout(timeoutId);
 
-        timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
-
-        return bot.sendMessage(
+        timeoutId = setInterval(
+          runNotification,
+          TEN_MINUTE,
+          username,
+          textLikeNumber,
           id,
-          `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
+        );
+
+        return MyBot.sendMessage(
+          id,
+          `Оповещение задано на каждые ${
+            TEN_MINUTE / MINUTE
+          } минут при изменение в ${text}%!`,
           MESSAGE_OPTIONS,
         );
       }
@@ -250,12 +251,12 @@ const start = async () => {
           console.log('save to .txt');
         });
 
-        return await bot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
+        return await MyBot.sendMessage(id, 'Данные обновлены', MESSAGE_OPTIONS);
       }
 
-      return bot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');
+      return MyBot.sendMessage(id, 'Я тебя не понимаю, попробуй еще раз!)');
     } catch (e) {
-      return bot.sendMessage(id, 'Произошла какая то ошибочка!)');
+      return MyBot.sendMessage(id, 'Произошла какая то ошибочка!)');
     }
   });
 };
