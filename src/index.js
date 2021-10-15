@@ -4,21 +4,9 @@ import fs from 'fs';
 
 import MyBot from './config.js';
 
-import {
-  getCount,
-  getStatusEmoji,
-  getStatusClearProfite,
-  getDiff,
-  getListCoin,
-} from './utils.js';
+import { getCount, getStatusEmoji, getStatusClearProfite, getDiff, getListCoin } from './utils.js';
 import { AGAIN_MESSAGE_OPTIONS, MESSAGE_OPTIONS } from './constants/options.js';
-import {
-  EXAMPLE_LIST,
-  LIST_HEADER_REGEX,
-  MINUTE,
-  MY_CHAT,
-  TEN_MINUTE
-} from './constants/index.js';
+import { EXAMPLE_LIST, LIST_HEADER_REGEX, MINUTE, MY_CHAT, TEN_MINUTE } from './constants/index.js';
 
 const permandingValues = {};
 
@@ -55,9 +43,7 @@ const runNotification = async (username, trigerPersent, chatId) => {
 
     forEach(result, (value, key) => {
       arrResult.push(
-        result[key] > 0
-          ? `🟢 ${key} Поднялся на ${value}%🔼`
-          : `🔴 ${key} Упал на ${value}%🔻`,
+        result[key] > 0 ? `🟢 ${key} Поднялся на ${value}%🔼` : `🔴 ${key} Упал на ${value}%🔻`,
       );
     });
 
@@ -68,9 +54,7 @@ const runNotification = async (username, trigerPersent, chatId) => {
 };
 
 const start = async () => {
-  MyBot.setMyCommands([
-    { command: '/example', description: 'Send me message list like this...' },
-  ]);
+  MyBot.setMyCommands([{ command: '/example', description: 'Send me message list like this...' }]);
 
   MyBot.on('message', async ({ text, chat: { id, username } }) => {
     try {
@@ -95,7 +79,10 @@ const start = async () => {
           get(username),
         )(permandingValues);
 
-        MyBot.sendMessage(MY_CHAT, `${username}\n${text}\nПокупай: ${sortedAnswer || 'Да что угодно =)'}`);
+        MyBot.sendMessage(
+          MY_CHAT,
+          `${username}\n${text}\nПокупай: ${sortedAnswer || 'Да что угодно =)'}`,
+        );
         return MyBot.sendMessage(
           id,
           `Покупай: ${sortedAnswer || 'Да что угодно =)'}`,
@@ -166,11 +153,13 @@ const start = async () => {
             answerMessages.push([
               getStatusEmoji(status),
               coinName,
+              ' ',
               totalRound,
               '$ (',
               getStatusClearProfite(status, totalRound),
-              '$)',
+              '$) ',
               getDiff(status, prevStatus, false),
+              getDiff(status, prevStatus, false) && '%',
             ]);
           }
 
@@ -191,7 +180,7 @@ const start = async () => {
 
         const { prevSumPriceCurrent } = permandingValues[username];
 
-        const sortedAnswer = sortBy(arr => arr[6], answerMessages).reverse();
+        const sortedAnswer = sortBy(arr => arr[7], answerMessages).reverse();
 
         sortedAnswer.push(
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
@@ -200,7 +189,7 @@ const start = async () => {
           )}$\nДоход: ${round(sumPriceCurrent - totalAll, 2)}$ ${getDiff(
             sumPriceCurrent,
             prevSumPriceCurrent,
-          )}*`,
+          )}%*`,
         );
 
         permandingValues[username] = {
@@ -208,9 +197,7 @@ const start = async () => {
           prevSumPriceCurrent: sumPriceCurrent,
         };
 
-        const replaceQree = sortedAnswer.map(answer =>
-          answer.toString().replace(/,/g, ' '),
-        );
+        const replaceQree = sortedAnswer.map(answer => answer.toString().replace(/,/g, ''));
 
         MyBot.sendMessage(MY_CHAT, `${username}\n${text}\n${replaceQree.join('\n')}`);
 
@@ -236,20 +223,12 @@ const start = async () => {
       if (isFinite(textLikeNumber) && textLikeNumber >= 0 && textLikeNumber < 30) {
         if (timeoutId) clearTimeout(timeoutId);
 
-        timeoutId = setInterval(
-          runNotification,
-          TEN_MINUTE,
-          username,
-          textLikeNumber,
-          id,
-        );
+        timeoutId = setInterval(runNotification, TEN_MINUTE, username, textLikeNumber, id);
 
         MyBot.sendMessage(MY_CHAT, `${username}\nОповещение ${text}`);
         return MyBot.sendMessage(
           id,
-          `Оповещение задано на каждые ${
-            TEN_MINUTE / MINUTE
-          } минут при изменение в ${text}%!`,
+          `Оповещение задано на каждые ${TEN_MINUTE / MINUTE} минут при изменение в ${text}%!`,
           MESSAGE_OPTIONS,
         );
       }

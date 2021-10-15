@@ -51,11 +51,9 @@ export const getCount = stringData => {
 };
 
 export const getDiff = (value, prevValue, type = true) => {
-  if (!prevValue || value === prevValue) return '';
+  if (!prevValue) return null;
 
-  return value > prevValue
-    ? ` [${round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2)}%🔼]`
-    : ` [-${round(type ? 100 - (value * 100) / prevValue : prevValue - value, 2)}%🔻]`;
+  return round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2);
 };
 
 export const getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
