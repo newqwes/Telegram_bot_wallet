@@ -33,12 +33,13 @@
     "prettier": "^2.1.2"
   },
   "dependencies": {
-    "jsonwebtoken": "^8.5.1",
-    "morgan": "^1.10.0",
     "dotenv": "^10.0.0",
+    "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.21",
+    "morgan": "^1.10.0",
     "node-telegram-bot-api": "^0.53.0",
     "nodemon": "^2.0.12",
-    "request-promise": "^4.2.6"
+    "request-promise": "^4.2.6",
+    "ws": "^8.2.3"
   }
 }

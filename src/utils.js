@@ -1,8 +1,24 @@
 import { round } from 'lodash';
 import rp from 'request-promise';
-
+// import WebSocket from 'ws';
 import { PARSE_STRING_REGEX } from './constants';
 import { REQUESTS_OPTIONS } from './constants/options';
+
+// const pricesWs = new WebSocket('wss://ws.coincap.io/prices?assets=ALL');
+
+// let currentCoinPrices = {};
+
+// pricesWs.onerror = error => {
+//   console.log(`API WebSocket call onerror: ${error.message}`);
+// };
+
+// pricesWs.onmessage = ({ data }) => {
+//   try {
+//     currentCoinPrices = { ...currentCoinPrices, ...JSON.parse(data) };
+//   } catch (error) {
+//     console.log('API WebSocket call catch error:', error.message);
+//   }
+// };
 
 export const getListCoin = async () => {
   try {
