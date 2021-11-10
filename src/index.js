@@ -74,7 +74,7 @@ const start = async () => {
         const sortedAnswer = compose(
           join(', '),
           map('coinName'),
-          take(4),
+          take(10),
           sortBy('prevStatus'),
           get(username),
         )(permandingValues);
