@@ -126,19 +126,13 @@ const start = async () => {
         result.forEach(async ({ coinName, count, total, average }) => {
           const currency = listCoin.data.find(({ symbol }) => isEqual(symbol, coinName));
 
-          let currentPrice;
-
           if (!currency) return;
 
-          currentPrice = get(['quote', 'USD', 'price'], currency);
+          const currentPrice = get(['quote', 'USD', 'price'], currency);
 
-          const status = round((currentPrice * 100) / average, 2);
+          const status = (currentPrice * 100) / average;
 
-          const averageRound = round(average, 4);
-          currentPrice = round(currentPrice, 4);
-          const totalRound = round(total, 2);
-
-          totalAll += totalRound;
+          totalAll += total;
           currentPriceAll.push(currentPrice * count);
 
           const { prevStatus } = getOr(
@@ -149,14 +143,14 @@ const start = async () => {
             permandingValues,
           );
 
-          if (totalRound !== 0) {
+          if (total !== 0) {
             answerMessages.push([
               getStatusEmoji(status),
               coinName,
               ' ',
-              totalRound,
+              round(total, 1),
               '$ (',
-              getStatusClearProfite(status, totalRound),
+              getStatusClearProfite(status, total),
               '$) ',
               getDiff(status, prevStatus, false),
               getDiff(status, prevStatus, false) && '%',
@@ -167,9 +161,9 @@ const start = async () => {
             ...permandingValues[username],
             [coinName]: {
               coinName,
-              prevTotal: totalRound,
+              prevTotal: total,
               prevCount: count,
-              prevAverage: averageRound,
+              prevAverage: average,
               prevCurrentPrice: currentPrice,
               prevStatus: status,
             },

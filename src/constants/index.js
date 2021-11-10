@@ -17,4 +17,4 @@ export const LIST_HEADER_REGEX = /Цена покупки/;
 export const MINUTE = 1000 * 60;
 export const TEN_MINUTE = MINUTE * 10;
 
-export const PARSE_STRING_REGEX = /[A-Z]{1,10}\s(-?)\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;
+export const PARSE_STRING_REGEX = /\w{1,}\s(-?)\d{0,}(\.|)(\d{0,}|)\s=\s\d{0,}(\.|)(\d{0,})/gm;

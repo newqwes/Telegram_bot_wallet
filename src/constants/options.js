@@ -5,7 +5,7 @@ export const REQUESTS_OPTIONS = {
   uri: 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
   qs: {
     start: '1',
-    limit: '400',
+    limit: '3000',
     convert: 'USD',
   },
   headers: {
