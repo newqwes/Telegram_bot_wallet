@@ -49,14 +49,31 @@ export const getCount = stringData => {
   return result;
 };
 
-export const getDiff = (value, prevValue, type = true) => {
+export const getDiff = ({
+  value,
+  prevValue,
+  prevCurrentPrice,
+  currentPrice,
+  total,
+  type = true,
+}) => {
+  if (total === 0) {
+    return 100 - (prevCurrentPrice * 100) / currentPrice;
+  }
   if (!prevValue) return null;
 
   return round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2);
 };
 
 export const getStatusEmoji = status => (status - 100 >= 0 ? '🟢' : '🔴');
-export const getStatusClearProfite = (status, total) => round(((status - 100) / 100) * total, 1);
+
+export const getStatusClearProfite = (status, total, count, currentPrice) => {
+  if (total === 0) {
+    return round(count * currentPrice, 1);
+  }
+
+  return round(((status - 100) / 100) * total, 1);
+};
 
 export const getStatusLine = (status, total) =>
   `Статус: ${getStatusEmoji(status)}*${getStatusClearProfite(status, total)}$ (${round(

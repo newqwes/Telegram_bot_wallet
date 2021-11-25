@@ -130,9 +130,10 @@ const start = async () => {
 
           const currentPrice = get(['quote', 'USD', 'price'], currency);
 
-          const status = (currentPrice * 100) / average;
+          const status = average === 0 ? 100 : (currentPrice * 100) / average;
 
           totalAll += total;
+
           currentPriceAll.push(currentPrice * count);
 
           const { prevStatus } = getOr(
@@ -143,17 +144,32 @@ const start = async () => {
             permandingValues,
           );
 
-          if (total !== 0) {
+          const { prevCurrentPrice } = getOr(
+            {
+              prevCurrentPrice: null,
+            },
+            [username, coinName],
+            permandingValues,
+          );
+
+          if (count !== 0) {
             answerMessages.push([
               getStatusEmoji(status),
               coinName,
               ' ',
               round(total, 1),
               '$ (',
-              getStatusClearProfite(status, total),
+              getStatusClearProfite(status, total, count, currentPrice),
               '$) ',
-              getDiff(status, prevStatus, false),
-              getDiff(status, prevStatus, false) && '%',
+              getDiff({ value: status, prevValue: prevStatus, type: false }),
+              getDiff({
+                value: status,
+                prevValue: prevStatus,
+                prevCurrentPrice,
+                currentPrice,
+                total,
+                type: false,
+              }) && '%',
             ]);
           }
 
@@ -180,10 +196,10 @@ const start = async () => {
           `Всего вложил: *${round(totalAll, 2)}*$\nСостояние кошелька: *${round(
             sumPriceCurrent,
             2,
-          )}$\nДоход: ${round(sumPriceCurrent - totalAll, 2)}$ ${getDiff(
-            sumPriceCurrent,
-            prevSumPriceCurrent,
-          )}%*`,
+          )}$\nДоход: ${round(sumPriceCurrent - totalAll, 2)}$ ${getDiff({
+            value: sumPriceCurrent,
+            prevValue: prevSumPriceCurrent,
+          })}%*`,
         );
 
         permandingValues[username] = {
