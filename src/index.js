@@ -161,7 +161,14 @@ const start = async () => {
               '$ (',
               getStatusClearProfite(status, total, count, currentPrice),
               '$) ',
-              getDiff({ value: status, prevValue: prevStatus, type: false }),
+              getDiff({
+                value: status,
+                prevValue: prevStatus,
+                prevCurrentPrice,
+                currentPrice,
+                total,
+                type: false,
+              }),
               getDiff({
                 value: status,
                 prevValue: prevStatus,

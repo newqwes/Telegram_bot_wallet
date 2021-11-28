@@ -58,8 +58,10 @@ export const getDiff = ({
   type = true,
 }) => {
   if (total === 0) {
-    return 100 - (prevCurrentPrice * 100) / currentPrice;
+    console.log(prevCurrentPrice, currentPrice);
+    return round(100 - (prevCurrentPrice * 100) / currentPrice, 2);
   }
+
   if (!prevValue) return null;
 
   return round(type ? 100 - (prevValue * 100) / value : value - prevValue, 2);
